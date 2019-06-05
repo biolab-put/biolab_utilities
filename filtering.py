@@ -3,7 +3,7 @@
 import pandas as pd
 from scipy.optimize import minimize
 from scipy.signal import butter, filtfilt
-import putemg_utilities
+from . import putemg_utilities
 import numpy as np
 
 __all__ = ["apply_filter"]
