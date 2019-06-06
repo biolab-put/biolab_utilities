@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 
 import pandas as pd
+import numpy as np
+
 from scipy.optimize import minimize
 from scipy.signal import butter, filtfilt
+
 from . import putemg_utilities
-import numpy as np
+
 
 __all__ = ["apply_filter"]
 
