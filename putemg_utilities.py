@@ -405,7 +405,8 @@ def prepare_data(dfs: Dict[Record, pd.DataFrame], s: Dict[str, List[Record]], fe
         df_temp["original_time"] = df_temp.index
 
         # TODO: delete filter_smart when data on server in already filtered format
-        df_temp["output_0"] = filter_smart(df_temp["TRAJ_GT"].values, df_temp["TRAJ_1"].values)
+        # df_temp["output_0"] = filter_smart(df_temp["TRAJ_GT"].values, df_temp["TRAJ_1"].values)
+        df_temp["output_0"] = vgg_filter(df_temp["TRAJ_GT"].values, df_temp["TRAJ_1"].values)  # TODO !!!
         df_temp["output_0"] = filter_transitions(df_temp["output_0"].values,
                                                  start_before=2, start_after=1,
                                                  end_before=0, end_after=0,
