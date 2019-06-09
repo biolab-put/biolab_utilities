@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import time
+
 import pandas as pd
 import numpy as np
 
@@ -81,7 +83,11 @@ def pre_process(signal, window_t=10, freq=5124.07211903, low_pass=20, high_pass=
 
 
 def apply_filter(df: pd.DataFrame):
+    start = time.time()
     columns = list(filter(lambda k: 'EMG' in k, df.columns))
+    print('Processing channel: ', end='', flush=True)
     for channel_name in columns:
-        print("Processing channel {:s}".format(channel_name))
+        print(' ' + channel_name, end='', flush=True)
         df[channel_name] = pre_process(df[channel_name])
+    print('', flush=True)
+    print("Elapsed time: {:.2f}s".format(time.time() - start))

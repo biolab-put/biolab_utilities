@@ -14,6 +14,11 @@ import ast
 import math
 from numpy.lib.stride_tricks import as_strided
 
+import warnings
+from sklearn.exceptions import DataConversionWarning
+
+warnings.filterwarnings(action='ignore', category=DataConversionWarning)
+warnings.filterwarnings(action='ignore', category=UserWarning, message='Variables are collinear')
 
 __all__ = ["convert_types_in_dict", "moving_window_stride", "window_trapezoidal",
            "Record", "split", "record_filter", "filter_transitions", "filter_smart", "filter_recognition",
@@ -67,7 +72,6 @@ def window_trapezoidal(size, slope):
         return np.full(size, 1)
     else:
         return np.array([1 if ((slope * size <= i) & (i <= (1-slope) * size)) else (1/slope * i / size) if (i < slope * size) else (1/slope * (size - i) / size) for i in range(1, size + 1)])
-
 
 
 class Record:
@@ -357,7 +361,6 @@ def data_per_id_and_date(records: List[Record], n_splits: int = None):
         available_dates = sorted(list({r.date for r in rec_i}))
         for d in available_dates:
             s = "{:}/{:}".format(i, d)
-            print(s)
 
             rec_i_d = record_filter(rec_i, whitelists={"date": [d]})
 
@@ -401,6 +404,7 @@ def prepare_data(dfs: Dict[Record, pd.DataFrame], s: Dict[str, List[Record]], fe
 
         df_temp["original_time"] = df_temp.index
 
+        # TODO: delete filter_smart when data on server in already filtered format
         df_temp["output_0"] = filter_smart(df_temp["TRAJ_GT"].values, df_temp["TRAJ_1"].values)
         df_temp["output_0"] = filter_transitions(df_temp["output_0"].values,
                                                  start_before=2, start_after=1,
