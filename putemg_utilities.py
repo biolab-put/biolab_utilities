@@ -17,6 +17,7 @@ from numpy.lib.stride_tricks import as_strided
 
 __all__ = ["convert_types_in_dict", "moving_window_stride", "window_trapezoidal",
            "Record", "split", "record_filter", "filter_transitions", "filter_smart", "filter_recognition",
+           "vgg_filter",
            "data_per_id", "data_per_id_and_date", "all_data_per_id", "prepare_data", "normalized_confusion_matrix",
            "plot_confusion_matrix", "StandardScalerPerFeature", "prepare_pipeline"]
 
@@ -284,6 +285,24 @@ def filter_smart(recognized: np.ndarray, trajectory: np.ndarray,
             output[s:t] = gesture
 
     return output
+
+
+def vgg_filter(recognized: np.ndarray, trajectory: np.ndarray,
+               recognition_median_filter: int = 7,
+               recognition_tolerance_early: int = 1,
+               recognition_tolerance_late: int = 8):
+    recognized_filtered = medfilt(recognized, recognition_median_filter)
+    gestures = np.unique(trajectory)
+    for g in gestures:  # reject mistakes outside of tolerance range -> -2
+        if g != 0:
+            g_mask = trajectory == g
+            if recognition_tolerance_early > 0:
+                g_mask = binary_dilation(g_mask, structure=np.array([1, 1, 0]), iterations=recognition_tolerance_early)
+            if recognition_tolerance_late > 0:
+                g_mask = binary_dilation(g_mask, structure=np.array([0, 1, 1]), iterations=recognition_tolerance_late)
+            np.putmask(recognized_filtered, np.logical_and(recognized_filtered == g, np.logical_not(g_mask)), -2)
+
+    return recognized_filtered
 
 
 def filter_recognition(recognized: np.ndarray, trajectory: np.ndarray, gestures, margin_l: int = 1, margin_r: int = 8):
