@@ -407,12 +407,12 @@ def prepare_data(dfs: Dict[Record, pd.DataFrame], s: Dict[str, List[Record]], fe
         # label filtering deprecated as labeling vgg labels are already filtered
         # df_temp["output_0"] = filter_smart(df_temp["TRAJ_GT"].values, df_temp["TRAJ_1"].values)
         # df_temp["output_0"] = vgg_filter(df_temp["TRAJ_GT"].values, df_temp["TRAJ_1"].values)
-        df_temp["output_0"] = filter_transitions(df_temp["output_0"].values,
+
+        df_temp["output_0"] = filter_transitions(df_temp["TRAJ_GT"].values,
                                                  start_before=2, start_after=1,
                                                  end_before=0, end_after=0,
                                                  pause_before=0, pause_after=4)
 
-        # df_temp["output_0"] = filter_recognition(df_temp["TRAJ_GT"].values, df_temp["TRAJ_1"].values, gestures)
         df_temp.rename({c: "input_{:d}_{:s}".format(i, c) for i, c in enumerate(columns_input)},
                        axis="columns", inplace=True)
 
