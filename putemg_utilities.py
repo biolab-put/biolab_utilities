@@ -297,14 +297,14 @@ def vgg_filter(recognized: np.ndarray, trajectory: np.ndarray,
                recognition_tolerance_late: int = 8):
     recognized_filtered = medfilt(recognized, recognition_median_filter)
     gestures = np.unique(trajectory)
-    for g in gestures:  # reject mistakes outside of tolerance range -> -2
+    for g in gestures:  # reject mistakes outside of tolerance range -> -1
         if g != 0:
             g_mask = trajectory == g
             if recognition_tolerance_early > 0:
                 g_mask = binary_dilation(g_mask, structure=np.array([1, 1, 0]), iterations=recognition_tolerance_early)
             if recognition_tolerance_late > 0:
                 g_mask = binary_dilation(g_mask, structure=np.array([0, 1, 1]), iterations=recognition_tolerance_late)
-            np.putmask(recognized_filtered, np.logical_and(recognized_filtered == g, np.logical_not(g_mask)), -2)
+            np.putmask(recognized_filtered, np.logical_and(recognized_filtered == g, np.logical_not(g_mask)), -1)
 
     return recognized_filtered
 
