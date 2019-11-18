@@ -20,7 +20,7 @@ from sklearn.exceptions import DataConversionWarning
 warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 warnings.filterwarnings(action='ignore', category=UserWarning, message='Variables are collinear')
 
-__all__ = ["convert_types_in_dict", "moving_window_stride", "window_trapezoidal",
+__all__ = ["convert_types_in_dict", "moving_window_stride", "force_features_in_window", "window_trapezoidal",
            "Record", "split", "record_filter", "filter_transitions", "filter_smart", "filter_recognition",
            "vgg_filter",
            "data_per_id", "data_per_id_and_date", "all_data_per_id", "prepare_data", "normalized_confusion_matrix",
@@ -57,6 +57,32 @@ def moving_window_stride(array, window, step):
     strided = as_strided(array, shape=(win_count, window), strides=(stride*step, stride))
     index = np.arange(window - 1, window + (win_count-1) * step, step)
     return strided, index
+
+
+def force_features_in_window(record: pd.DataFrame, window: int, step: int):
+    other_data = list(record.filter(regex="^(?!FORCE_).*"))  # list all non force columns and copy to output record
+    output_record: pd.DataFrame = record[other_data]
+
+    print('Calculating FORCE params: :', end='', flush=True)
+
+    for column in record.filter(regex=r"FORCE_\d+"):  # For each column containing FORCE data (for each Series)
+        print(' ' + column.split('_')[1], end='', flush=True)
+        windows_strided, indexes = moving_window_stride(record[column], window, step)
+
+        mean = pd.Series(data=np.mean(windows_strided, axis=1), index=record.index[indexes])
+        median = pd.Series(data=np.median(windows_strided, axis=1), index=record.index[indexes])
+
+        force_df = pd.DataFrame({column + '_MEAN': mean, column + '_MEDIAN': median})
+
+        output_record = output_record.join(force_df, how="outer")
+
+    print('', flush=True)
+
+    force_param_list = list(output_record.filter(regex=r"FORCE_\d+_[A-Z]+"))
+    output_record[force_param_list] = output_record[force_param_list].fillna(method='bfill')
+    output_record[force_param_list] = output_record[force_param_list].fillna(method='ffill')
+
+    return output_record
 
 
 def window_trapezoidal(size, slope):
