@@ -24,7 +24,7 @@ __all__ = ["convert_types_in_dict", "moving_window_stride", "window_trapezoidal"
            "Record", "split", "record_filter", "filter_transitions", "filter_smart", "filter_recognition",
            "vgg_filter",
            "data_per_id", "data_per_id_and_date", "all_data_per_id", "prepare_data", "normalized_confusion_matrix",
-           "plot_confusion_matrix", "StandardScalerPerFeature", "prepare_pipeline"]
+           "plot_confusion_matrix", "StandardScalerPerFeature", "prepare_pipeline", "normalise_force_data"]
 
 
 def convert_types_in_dict(xml_dict):
@@ -524,3 +524,46 @@ def prepare_pipeline(train_in: pd.DataFrame, train_out: pd.DataFrame,
     pipe.fit(train_in, train_out)
 
     return pipe
+
+
+def normalise_force_data(data: pd.DataFrame, mvc: pd.DataFrame):
+    emg_mvc_columns = list(filter(lambda k: 'EMG' in k, mvc.columns))
+
+    # extract only MVC active part
+    emg_mvc_data = mvc[emg_mvc_columns][binary_erosion(mvc['TRAJ_1'] > 0, iterations=2000)].values
+
+    # calculate scaler as mean value of 5 highest RMS
+    emg_mvc_rms = np.sqrt(np.mean(np.square(emg_mvc_data), axis=0))
+    emg_mvc_scaler = np.mean(emg_mvc_rms[emg_mvc_rms.argsort()[-5:]])
+
+    # read scaler for force from file
+    force_mvc_scaler = mvc['FORCE_MVC'].values[0]
+
+    # new DataFrame for normalised data
+    scaled_frame = pd.DataFrame()
+
+    # scale EMG write to new DF
+    emg_columns = list(filter(lambda k: 'EMG' in k, data.columns))
+    scaled_frame[emg_columns] = data[emg_columns] / emg_mvc_scaler
+
+    # scale FORCE and TRAJ
+    force_traj_columns = list(filter(lambda k: ('FORCE' in k) or ('TRAJ' in k), data.columns))
+    force_scaled = data[force_traj_columns] / force_mvc_scaler
+
+    force_groups = {
+        '1': ['FORCE_1', 'FORCE_2'],
+        '2': ['FORCE_3', 'FORCE_4'],
+        '3': ['FORCE_5', 'FORCE_6'],
+        '4': ['FORCE_7', 'FORCE_8', 'FORCE_9', 'FORCE_10']
+    }
+
+    # mean the values of force to correspond with TRAJ
+    for g_name, g_list in force_groups.items():
+        scaled_frame['FORCE_' + g_name] = np.mean(force_scaled[g_list], axis=1)
+        scaled_frame['TRAJ_' + g_name] = force_scaled['TRAJ_' + g_name]
+
+    # add remaining columns
+    other_columns = list(filter(lambda k: not (('FORCE' in k) or ('EMG' in k) or ('TRAJ' in k)), data.columns))
+    scaled_frame[other_columns] = data[other_columns]
+
+    return scaled_frame
