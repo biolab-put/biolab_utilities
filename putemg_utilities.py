@@ -8,6 +8,8 @@ from scipy.ndimage.morphology import binary_dilation, binary_erosion
 from scipy.signal import medfilt
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
+
+
 import warnings
 import matplotlib.pyplot as plt
 import ast
@@ -23,8 +25,9 @@ warnings.filterwarnings(action='ignore', category=UserWarning, message='Variable
 __all__ = ["convert_types_in_dict", "moving_window_stride", "window_trapezoidal",
            "Record", "split", "record_filter", "filter_transitions", "filter_smart", "filter_recognition",
            "vgg_filter",
-           "data_per_id", "data_per_id_and_date", "all_data_per_id", "prepare_data", "normalized_confusion_matrix",
-           "plot_confusion_matrix", "StandardScalerPerFeature", "prepare_pipeline", "normalise_force_data"]
+           "data_per_id", "data_per_id_and_date", "all_data_per_id", "prepare_data", "prepare_force_data",
+           "normalized_confusion_matrix", "plot_confusion_matrix", "StandardScalerPerFeature",
+           "prepare_pipeline", "normalise_force_data"]
 
 
 def convert_types_in_dict(xml_dict):
@@ -421,6 +424,34 @@ def prepare_data(dfs: Dict[Record, pd.DataFrame], s: Dict[str, List[Record]], fe
     return dfs_output
 
 
+def prepare_force_data(dfs: Dict[Record, pd.DataFrame], s: Dict[str, List[Record]],
+                       features: List[str], force_feature: str, trajectory: List[int]):
+    dfs_output: Dict[str, Dict[str, pd.DataFrame]] = dict()
+
+    emg_feature_column_regex = re.compile("^((" + ")|(".join(features) + "))_[0-9]+")
+    force_feature_column_regex = re.compile("^FORCE_" + force_feature +
+                                            "_((" + ")|(".join(list(map(str, trajectory))) + "))")
+
+    for data_type, files in s.items():
+        dfs_output[data_type]: Dict[str, pd.DataFrame] = dict()
+        dfs_output[data_type]["input"] = pd.DataFrame()
+        dfs_output[data_type]["output"] = pd.DataFrame()
+
+        for record in files:
+            emg_features_columns_input = list(filter(emg_feature_column_regex.match, list(dfs[record])))
+            dfs_output[data_type]["input"] = dfs_output[data_type]["input"].append(
+                dfs[record][emg_features_columns_input])
+
+            force_feature_columns_output = list(filter(force_feature_column_regex.match, list(dfs[record])))
+            dfs_output[data_type]["output"] = dfs_output[data_type]["output"].append(
+                dfs[record][force_feature_columns_output])
+
+        dfs_output[data_type]["input"].index = np.arange(0, len(dfs_output[data_type]["input"].index))
+        dfs_output[data_type]["output"].index = np.arange(0, len(dfs_output[data_type]["output"].index))
+
+    return dfs_output
+
+
 def normalized_confusion_matrix(cm):
     return cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
 
@@ -516,6 +547,15 @@ def prepare_pipeline(train_in: pd.DataFrame, train_out: pd.DataFrame,
     elif predictor == "SVM":
         from sklearn.svm import SVC
         predictor_instance = SVC(**predictor_args)
+    elif predictor == "LR":
+        from sklearn.linear_model import LinearRegression
+        predictor_instance = LinearRegression(**predictor_args)
+    elif predictor == "SVR":
+        from sklearn.svm import SVR
+        predictor_instance = SVR(**predictor_args)
+    elif predictor == "MLPR":
+        from sklearn.neural_network import MLPRegressor
+        predictor_instance = MLPRegressor(**predictor_args)
     else:
         raise ValueError(predictor + ' is not a valid predictor')
 
